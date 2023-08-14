@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Youtube Playlist Quick Delete",
-  "description": "Adds a button to Youtubes playlists allowing users to quickly delete their videos",
+  "name": "Youtube: Quick Delete",
+  "description": "Quickly delete videos from your youtube playlists.",
   "version": "1.0",
   "icons": {
     "16": "images/icon-16.png",
