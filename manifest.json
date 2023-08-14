@@ -3,7 +3,6 @@
   "name": "Youtube Playlist Quick Delete",
   "description": "Adds a button to Youtubes playlists allowing users to quickly delete their videos",
   "version": "1.0",
-  "permissions": ["activeTab"],
   "icons": {
     "16": "images/icon-16.png",
     "32": "images/icon-32.png",
