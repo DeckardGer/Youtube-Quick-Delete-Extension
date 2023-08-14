@@ -1,5 +1,14 @@
-ytd-playlist-video-renderer:hover #manual-delete {
+ytd-playlist-video-renderer:hover #manual-delete,
+ytd-playlist-panel-video-renderer:hover #manual-delete {
   visibility: visible;
+}
+
+ytd-playlist-video-renderer #manual-delete {
+  margin-right: 5px;
+}
+
+ytd-playlist-panel-video-renderer #manual-delete {
+  margin: auto 0;
 }
 
 #manual-delete {
@@ -10,5 +19,4 @@ ytd-playlist-video-renderer:hover #manual-delete {
   border: 0;
   fill: rgb(255, 255, 255);
   cursor: pointer;
-  margin-right: 5px;
 }
