@@ -50,8 +50,9 @@
 
   function addDeleteButton(video) {
     if (
-      video.nodeName === "YTD-PLAYLIST-VIDEO-RENDERER" ||
-      video.nodeName === "YTD-PLAYLIST-PANEL-VIDEO-RENDERER"
+      (video.nodeName === "YTD-PLAYLIST-VIDEO-RENDERER" ||
+        video.nodeName === "YTD-PLAYLIST-PANEL-VIDEO-RENDERER") &&
+      !video.querySelector("button#manual-delete")
     ) {
       const button = document.createElement("button");
       const svg =
