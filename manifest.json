@@ -1,20 +1,31 @@
 {
 	"manifest_version": 3,
 	"name": "YouTube Enhancer",
-	"description": "Enhances YouTube with quick delete functionality for playlists and increases playback speed.",
-	"version": "1.0",
-	"permissions": ["activeTab"],
+	"description": "Enhances YouTube with quick delete buttons for playlists and a controllable default playback speed.",
+	"version": "2.0",
+	"permissions": ["storage"],
 	"icons": {
 		"16": "images/icon-16.png",
 		"32": "images/icon-32.png",
 		"48": "images/icon-48.png",
 		"128": "images/icon-128.png"
 	},
+	"action": {
+		"default_title": "YouTube Enhancer",
+		"default_popup": "popup/popup.html",
+		"default_icon": {
+			"16": "images/icon-16.png",
+			"32": "images/icon-32.png",
+			"48": "images/icon-48.png",
+			"128": "images/icon-128.png"
+		}
+	},
 	"content_scripts": [
 		{
 			"matches": ["https://www.youtube.com/*"],
-			"js": ["extension/playlistDelete.js", "extension/createInlineScripts.js"],
-			"css": ["styles.css"]
+			"js": ["extension/settings.js", "extension/createInlineScripts.js", "extension/playlistDelete.js"],
+			"css": ["styles.css"],
+			"run_at": "document_start"
 		}
 	],
 	"web_accessible_resources": [

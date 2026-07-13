@@ -1,125 +1,176 @@
+// Adds a one-click "remove from playlist" button to every playlist video, on
+// both the /playlist page and the watch-page playlist panel.
 (() => {
-  async function waitForElementToExist(selector) {
-    let element;
+  const BTN_ID = "manual-delete";
+  const TARGET_TAGS = [
+    "YTD-PLAYLIST-VIDEO-RENDERER",
+    "YTD-PLAYLIST-PANEL-VIDEO-RENDERER",
+  ];
+  const TRASH_SVG =
+    '<svg enable-background="new 0 0 24 24" height="24" viewBox="0 0 24 24" width="24" focusable="false" style="pointer-events: none; display: block; width: 100%; height: 100%;"><path d="M11 17H9V8h2v9zm4-9h-2v9h2V8zm4-4v1h-1v16H6V5H5V4h4V3h6v1h4zm-2 1H7v15h10V5z"></path></svg>';
 
-    while (!element) {
-      element = document.querySelector(selector);
+  let enabled = true;
 
-      if (!element) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  function isTarget(node) {
+    return node && node.nodeType === 1 && TARGET_TAGS.includes(node.nodeName);
+  }
+
+  // Finds the "Remove from ..." item inside the currently open action menu.
+  // Matches by text prefix rather than an exact string or a brittle XPath.
+  function findRemoveItem() {
+    const items = document.querySelectorAll(
+      "ytd-popup-container ytd-menu-service-item-renderer"
+    );
+    for (const item of items) {
+      // Skip closed menus still lingering in the DOM (YouTube display:none's
+      // them, so offsetParent is null). The open menu is only visibility:hidden
+      // via setMenuHidden(), so its items keep an offsetParent.
+      if (item.offsetParent === null) continue;
+      const text = (item.textContent || "").trim().toLowerCase();
+      if (text.startsWith("remove from")) return item;
     }
+    return null;
+  }
 
-    return element;
+  // Closes any open dropdown and clears the scroll-locking backdrop. This is the
+  // safety net that prevents the page from freezing if the remove item can't be
+  // found for any reason.
+  function closeMenus() {
+    document.querySelectorAll("tp-yt-iron-dropdown").forEach((d) => {
+      try {
+        if (d.opened && typeof d.close === "function") d.close();
+      } catch (e) {
+        /* ignore */
+      }
+    });
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Escape",
+        keyCode: 27,
+        which: 27,
+        bubbles: true,
+      })
+    );
+  }
+
+  // Hides the action menu + backdrop while we drive it, so the user never sees
+  // it flash open. Programmatic clicks still work on hidden elements.
+  function setMenuHidden(hidden) {
+    const STYLE_ID = "yt-enhancer-hide-menu";
+    let style = document.getElementById(STYLE_ID);
+    if (hidden) {
+      if (!style) {
+        style = document.createElement("style");
+        style.id = STYLE_ID;
+        style.textContent =
+          "ytd-popup-container tp-yt-iron-dropdown{visibility:hidden !important;}" +
+          "tp-yt-iron-overlay-backdrop{opacity:0 !important;}";
+        (document.head || document.documentElement).appendChild(style);
+      }
+    } else if (style) {
+      style.remove();
+    }
   }
 
   async function deleteVideo(videoElement) {
-    const actionMenuButton = videoElement.querySelector("#menu #button");
+    const menuButton =
+      videoElement.querySelector("#menu #button") ||
+      videoElement.querySelector("ytd-menu-renderer yt-icon-button") ||
+      videoElement.querySelector("#menu button");
+    if (!menuButton) return;
 
-    popupContainer.style = "display: none";
+    let removed = false;
+    setMenuHidden(true);
+    try {
+      menuButton.click();
 
-    actionMenuButton.click();
+      // Poll for the freshly populated menu instead of a fixed delay.
+      let removeItem = null;
+      for (let i = 0; i < 40 && !removeItem; i++) {
+        await sleep(25);
+        removeItem = findRemoveItem();
+      }
 
-    await new Promise((resolve) => {
-      setTimeout(resolve, 5);
-    });
-
-    let removeCheckString =
-      "//tp-yt-paper-listbox/ytd-menu-service-item-renderer";
-
-    if (videoElement.nodeName === "YTD-PLAYLIST-VIDEO-RENDERER") {
-      removeCheckString +=
-        "[./tp-yt-paper-item/yt-formatted-string/span[text() = 'Remove from ']]";
-    } else if (videoElement.nodeName === "YTD-PLAYLIST-PANEL-VIDEO-RENDERER") {
-      removeCheckString +=
-        "[./tp-yt-paper-item/yt-formatted-string[text() = 'Remove from playlist']]";
+      if (removeItem) {
+        removeItem.click();
+        removed = true;
+      }
+    } catch (e) {
+      /* fall through to cleanup */
+    } finally {
+      // If the removal didn't go through, never leave the page stuck behind an
+      // open menu + backdrop (this was the old freeze bug).
+      if (!removed) closeMenus();
+      setMenuHidden(false);
     }
-
-    const deleteButton = document.evaluate(
-      removeCheckString,
-      document,
-      null,
-      XPathResult.FIRST_ORDERED_NODE_TYPE,
-      null
-    ).singleNodeValue;
-
-    deleteButton.click();
-
-    popupContainer.style = "display: block";
   }
 
   function addDeleteButton(video) {
-    if (
-      (video.nodeName === "YTD-PLAYLIST-VIDEO-RENDERER" ||
-        video.nodeName === "YTD-PLAYLIST-PANEL-VIDEO-RENDERER") &&
-      !video.querySelector("button#manual-delete")
-    ) {
-      const button = document.createElement("button");
-      const svg =
-        '<svg enable-background="new 0 0 24 24" height="24" viewBox="0 0 24 24" width="24" focusable="false" style="pointer-events: none; display: block; width: 100%; height: 100%;"><path d="M11 17H9V8h2v9zm4-9h-2v9h2V8zm4-4v1h-1v16H6V5H5V4h4V3h6v1h4zm-2 1H7v15h10V5z"></path></svg>';
+    if (!isTarget(video) || video.querySelector("button#" + BTN_ID)) return;
 
-      button.id = "manual-delete";
-
-      button.innerHTML = svg;
-      video.appendChild(button);
-
-      button.addEventListener("click", () => {
-        deleteVideo(video);
-      });
-    }
-  }
-
-  async function injectObserver(selector) {
-    const videosList = await waitForElementToExist(selector);
-
-    const observer = new MutationObserver((mutationList) => {
-      for (const mutation of mutationList) {
-        if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
-          mutation.addedNodes.forEach((addedNode) => {
-            addDeleteButton(addedNode);
-          });
-        }
-      }
+    const button = document.createElement("button");
+    button.id = BTN_ID;
+    button.type = "button";
+    button.title = "Remove from playlist";
+    button.setAttribute("aria-label", "Remove from playlist");
+    button.innerHTML = TRASH_SVG;
+    button.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      deleteVideo(video);
     });
+    video.appendChild(button);
+  }
 
-    observer.observe(videosList, { childList: true });
+  function scan() {
+    if (!enabled) return;
+    document
+      .querySelectorAll(TARGET_TAGS.join(","))
+      .forEach(addDeleteButton);
+  }
 
-    if (videosList.childNodes.length > 0) {
-      videosList.childNodes.forEach((video) => {
-        addDeleteButton(video);
+  function removeAllButtons() {
+    document.querySelectorAll("button#" + BTN_ID).forEach((b) => b.remove());
+  }
+
+  // One debounced observer for the whole app keeps buttons present across
+  // YouTube's SPA navigation and lazy-loaded rows.
+  let scanScheduled = false;
+  function scheduleScan() {
+    if (scanScheduled) return;
+    scanScheduled = true;
+    setTimeout(() => {
+      scanScheduled = false;
+      scan();
+    }, 200);
+  }
+
+  function start() {
+    const root = document.querySelector("ytd-app") || document.body;
+    if (root) {
+      new MutationObserver(scheduleScan).observe(root, {
+        childList: true,
+        subtree: true,
       });
     }
+    window.addEventListener("yt-navigate-finish", scheduleScan);
+    scan();
   }
 
-  function isPlaylistPage() {
-    return /^https:\/\/www\.youtube\.com\/playlist/.test(window.location.href);
+  if (window.__ytEnhancer) {
+    window.__ytEnhancer.subscribe((s) => {
+      const was = enabled;
+      enabled = !!s.deleteButtonsEnabled;
+      if (enabled && !was) scan();
+      else if (!enabled && was) removeAllButtons();
+    });
   }
 
-  function checkIfPlaylistPage() {
-    if (isPlaylistPage()) {
-      injectObserver(playlistVideosSelector);
-      window.removeEventListener("yt-page-data-updated", checkIfPlaylistPage);
-    }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start, { once: true });
+  } else {
+    start();
   }
-
-  async function init() {
-    popupContainer = await waitForElementToExist("ytd-popup-container");
-
-    injectObserver(inlineVideosSelector);
-
-    if (isPlaylistPage()) {
-      injectObserver(playlistVideosSelector);
-    } else {
-      // Variables that track new pages:
-      // yt-navigate-start and yt-page-data-updated
-      window.addEventListener("yt-page-data-updated", checkIfPlaylistPage);
-    }
-  }
-
-  const playlistVideosSelector =
-    "#primary ytd-playlist-video-list-renderer #contents";
-  const inlineVideosSelector = "#columns ytd-playlist-panel-renderer #items";
-  let popupContainer = null;
-
-  init();
 })();

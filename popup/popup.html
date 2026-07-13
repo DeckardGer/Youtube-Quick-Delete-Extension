@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="popup.css" />
+    <title>YouTube Enhancer</title>
+  </head>
+  <body>
+    <header class="header">
+      <h1>YouTube Enhancer</h1>
+    </header>
+
+    <section class="card">
+      <div class="row">
+        <label class="row-label" for="auto-speed">Default playback speed</label>
+        <label class="switch">
+          <input type="checkbox" id="auto-speed" />
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="speed" id="speed-controls">
+        <div class="speed-value"><span id="speed-readout">1.25</span>&times;</div>
+        <input
+          type="range"
+          id="speed-range"
+          min="0.25"
+          max="2"
+          step="0.05"
+          value="1.25"
+        />
+        <div class="presets" id="presets">
+          <button type="button" data-speed="1">1&times;</button>
+          <button type="button" data-speed="1.25">1.25&times;</button>
+          <button type="button" data-speed="1.5">1.5&times;</button>
+          <button type="button" data-speed="1.75">1.75&times;</button>
+          <button type="button" data-speed="2">2&times;</button>
+        </div>
+        <p class="hint">
+          Re-applied to every new video, so changing the speed on one video
+          won't carry over to the next.
+        </p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row">
+        <label class="row-label" for="delete-buttons"
+          >Playlist delete buttons</label
+        >
+        <label class="switch">
+          <input type="checkbox" id="delete-buttons" />
+          <span class="slider"></span>
+        </label>
+      </div>
+      <p class="hint">
+        Adds a one-click remove button to each video in your playlists.
+      </p>
+    </section>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

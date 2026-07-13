@@ -1,34 +1,55 @@
-# Youtube: Quick Delete
+# YouTube Enhancer
 
-Have you ever gotten annoyed that Youtube removed the ability to instantly remove videos from your playlists?
+Two quality-of-life features for YouTube:
 
-Good news! I added that functionality back.
+1. **Quick delete** — a one-click bin button on every video in your playlists, so you don't have to open the ⋯ menu and hunt for "Remove from playlist".
+2. **Default playback speed** — sets a speed of your choice on every video automatically, controllable from the toolbar popup.
 
-This is a simple side project that adds a bin button next to every video in every Youtube playlist.
+## Popup controls
 
-## HOW IT WORKS
+Click the extension icon to:
 
-When you load a Youtube page, it loads the content.js and styles.css files.
-There are 2 different places the delete button has to be added:
+- Toggle the **default playback speed** on/off and pick the speed (slider + presets).
+- Toggle the **playlist delete buttons** on/off.
 
-1. URLs with youtube.com/playlist.
-2. URLs with youtube.com/watch where they selected a video from a playlist.
+Settings are saved with `chrome.storage` and apply live to any open YouTube tab.
 
-To add the new button elements, we need the element which contains the list of videos in the given playlist.
-The element for the youtube.com/watch method exist on every page and get populated when necessary,
-so we can grab those elements immediately and call the `injectObserver()` method.
-The element for the youtube.com/playlist method however doesn't exist
-until you visit a page with that URL. We set up an event listener that listens for the `yt-page-data-updated`,
-which is a custom event with fires whenever you redirect in youtube. When on a youtube.com/playlist page,
-it calls the `injectObserver()` method and removes the event listener.
+## How playback speed works
 
-The `injectObserver()` method adds a mutation observer that listens for the elements mentioned above.
-This means whenever the contents inside the videos list change, it calls the `addDeleteButton()` method.
-This method adds a button to the provided video and adds an event listener to it.
+The speed is re-applied **once per video**. If you manually change the speed on a
+video, that change sticks for that video, but the next video snaps back to your
+configured default — so you never have to keep re-setting it.
 
-When the button is clicked, it calls the `deleteVideo()` method which opens the popup menu using the menu button associated with each video. It then finds the delete button and clicks it. Simple as that.
+The controller (`web-accessible/autoPlaybackSpeed.js`) runs in the page's own
+world so it can call the YouTube player's `setPlaybackRate()`. It detects a new
+video via the player's video id (from `loadstart` and `yt-navigate-finish`) and
+receives your settings from the content script over `postMessage`.
 
----
+## How quick delete works
 
-There are obviously things I skipped over like how I get the popup menu element or the styling for the buttons,
-but that is basically how it works.
+`extension/playlistDelete.js` adds a bin button to every
+`ytd-playlist-video-renderer` (on `/playlist`) and
+`ytd-playlist-panel-video-renderer` (in the watch-page playlist panel). A single
+debounced `MutationObserver` on the app keeps buttons present across YouTube's
+SPA navigation and lazily-loaded rows.
+
+Clicking a bin button opens the video's action menu (kept hidden), finds the
+"Remove from …" item by text prefix, and clicks it. The whole operation is
+wrapped in `try/finally` that **always** closes the dropdown and its backdrop —
+so if the remove item can't be found, the page can't get stuck behind a
+scroll-locking overlay.
+
+> Note: an earlier version froze the page when YouTube changed the menu markup —
+> the old code clicked a menu item found by an exact-text XPath with no null
+> check, threw, and left the backdrop up. That's fixed by the null-safe lookup
+> and guaranteed cleanup above.
+
+## Files
+
+- `manifest.json` — MV3 manifest (`storage` permission, toolbar popup).
+- `extension/settings.js` — shared settings store for the content scripts.
+- `extension/createInlineScripts.js` — injects the speed controller and bridges settings to it.
+- `extension/playlistDelete.js` — the playlist bin buttons.
+- `web-accessible/autoPlaybackSpeed.js` — the page-context speed controller.
+- `popup/` — the toolbar popup UI.
+- `styles.css` — bin button styling.
